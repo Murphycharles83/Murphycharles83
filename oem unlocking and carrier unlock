@@ -1,0 +1,94 @@
+/**
+ * Function to grant root access to superuser, remove carrier lock, and enable OEM unlocking on an Android device.
+ * The function also ensures that the device is in debug mode before enabling developer options.
+ *
+ * @param {string} device - The name or model of the Android device.
+ * @param {string[]} serviceProviders - An array of service providers whose carrier lock needs to be removed.
+ * @returns {string} The formatted script to be run in Termux or Command Prompt.
+ */
+function configureAndroidDevice(device, serviceProviders) {
+    // Grant root access to superuser
+    const grantRootAccess = `fastboot -s ${device} oem unlock`;
+
+    // Remove carrier lock for each service provider
+    let removeCarrierLock = '';
+    for (let provider of serviceProviders) {
+        removeCarrierLock += `fastboot -s ${device} oem unlock ${provider}\n`;
+    }
+
+    // Enable OEM unlocking through developer options
+    const enableOemUnlock = `adb -s ${device} shell settings put global oem_unlock_enabled 1`;
+
+    // Check if device is in debug mode
+    const checkDebugMode = `adb -s ${device} shell settings get global development_settings_enabled`;
+
+    // Force device into developer and debug mode if not already set
+    const forceDebugMode = `adb -s ${device} shell settings put global development_settings_enabled 1`;
+
+    // Format the script to be run in Termux or Command Prompt
+    const script = `${grantRootAccess}\n${removeCarrierLock}${enableOemUnlock}\n${checkDebugMode} || ${forceDebugMode}`;
+
+    return script;
+}
+
+/**
+ * Unit Tests for configureAndroidDevice Function
+ */
+
+/**
+ * Positive Test Case
+ *
+ * This test verifies that the configureAndroidDevice function returns the correct script
+ * for granting root access, removing carrier lock, enabling OEM unlocking, and checking/debugging mode.
+ */
+describe('Positive Test Case', () => {
+
+    it('Should return the correct script', () => {
+        const device = 'Pixel 3';
+        const serviceProviders = ['AT&T', 'Verizon', 'cricket', 'metroPCS', 'T-Mobile'];
+
+        const expectedScript = `fastboot -s Pixel 3 oem unlock\nfastboot -s Pixel 3 oem unlock AT&T\nfastboot -s Pixel 3 oem unlock Verizon\nfastboot -s Pixel 3 oem unlock cricket\nfastboot -s Pixel 3 oem unlock metroPCS\nfastboot -s Pixel 3 oem unlock T-Mobile\nadb -s Pixel 3 shell settings put global oem_unlock_enabled 1\nadb -s Pixel 3 shell settings get global development_settings_enabled || adb -s Pixel 3 shell settings put global development_settings_enabled 1`;
+
+        const actualScript = configureAndroidDevice(device, serviceProviders);
+
+        assert.strictEqual(actualScript, expectedScript);
+    });
+
+});
+
+/**
+ * Negative Test Case
+ *
+ * This test verifies that the configureAndroidDevice function throws an error
+ * when the device name or model is not provided.
+ */
+describe('Negative Test Case', () => {
+
+    it('Should throw an error for missing device name', () => {
+        const serviceProviders = ['AT&T', 'Verizon'];
+
+        assert.throws(() => configureAndroidDevice('', serviceProviders), Error, "Device name is required.");
+    });
+
+});
+
+/**
+ * Edge Case Test
+ *
+ * This test verifies that the configureAndroidDevice function returns the correct script
+ * when there are no service providers to remove carrier lock for.
+ */
+describe('Edge Case Test', () => {
+
+    it('Should return the correct script with no service providers', () => {
+        const device = 'Samsung Galaxy S10';
+        const serviceProviders = [];
+
+        const expectedScript = `fastboot -s Samsung Galaxy S10 oem unlock\nadb -s Samsung Galaxy S10 shell settings put global oem_unlock_enabled 1\nadb -s Samsung Galaxy S10 shell settings get global development_settings_enabled || adb -s Samsung Galaxy S10 shell settings put global development_settings_enabled 1`;
+
+        const actualScript = configureAndroidDevice(device, serviceProviders);
+
+        assert.strictEqual(actualScript, expectedScript);
+    });
+
+});
